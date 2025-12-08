@@ -1,4 +1,6 @@
+import datetime
 from django.db import models
+from django.utils import timezone
 from django.contrib.auth.models import User
 
 class Author(models.Model):
@@ -35,11 +37,16 @@ class Member(models.Model):
     def __str__(self):
         return self.user.username
 
+def return_date_time():
+    now = timezone.now()
+    return now + timezone.timedelta(+14)
+
 class Loan(models.Model):
     book = models.ForeignKey(Book, related_name='loans', on_delete=models.CASCADE)
     member = models.ForeignKey(Member, related_name='loans', on_delete=models.CASCADE)
     loan_date = models.DateField(auto_now_add=True)
     return_date = models.DateField(null=True, blank=True)
+    due_date = models.DateField(null=True, default=return_date_time)
     is_returned = models.BooleanField(default=False)
 
     def __str__(self):

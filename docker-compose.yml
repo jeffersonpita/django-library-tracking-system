@@ -32,13 +32,21 @@ services:
 
   celery:
     build: .
-    command: celery -A library_system worker -l info
+    command: celery -A library_system beat worker -l info
     volumes:
       - .:/code
     env_file:
       - .env
     depends_on:
       - web
+      - redis
+
+  celery-beat:
+    build: .
+    command: celery -A library_system beat -l info
+    volumes:
+      - .:/code
+    depends_on:
       - redis
 
 volumes:
