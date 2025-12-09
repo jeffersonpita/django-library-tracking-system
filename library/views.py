@@ -1,13 +1,17 @@
 from datetime import datetime, timedelta
-from library.pagination import CustomBookPagination
-from rest_framework import viewsets, status
-from rest_framework.response import Response
-from .models import Author, Book, Member, Loan
-from .serializers import AuthorSerializer, BookSerializer, MemberSerializer, LoanSerializer
-from rest_framework.decorators import action
-from django.utils import timezone
-from .tasks import send_loan_notification
+
+from django.db.models import Count, Q
 from django.forms.models import model_to_dict
+from django.utils import timezone
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+from library.pagination import CustomBookPagination
+
+from .models import Author, Book, Loan, Member
+from .serializers import AuthorSerializer, BookSerializer, LoanSerializer, MemberSerializer
+from .tasks import send_loan_notification
 
 
 class AuthorViewSet(viewsets.ModelViewSet):
@@ -15,7 +19,7 @@ class AuthorViewSet(viewsets.ModelViewSet):
     serializer_class = AuthorSerializer
 
 class BookViewSet(viewsets.ModelViewSet):
-    queryset = Book.objects.all()
+    queryset = Book.objects.all().order_by('-id')
     serializer_class = BookSerializer
     pagination_class = CustomBookPagination
 
@@ -58,9 +62,12 @@ class MemberViewSet(viewsets.ModelViewSet):
     queryset = Member.objects.all()
     serializer_class = MemberSerializer
 
-    @action(detail=False)
+    @action(detail=False, url_path="top-active")
     def top_active(self, request):
-        members = Member.objects.all().order_by('-active_loans')
+        members = (
+            Member.objects.annotate(active_loans=Count('loans', filter=Q(loans__is_returned=False)))
+            .order_by('-active_loans', 'id')
+        )
         page = self.paginate_queryset(members)
         if page is not None:
             serializer = self.get_serializer(page, many=True)

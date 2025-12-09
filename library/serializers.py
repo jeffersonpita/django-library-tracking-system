@@ -27,10 +27,11 @@ class MemberSerializer(serializers.ModelSerializer):
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), source='user', write_only=True
     )
+    active_loans = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Member
-        fields = ['id', 'user', 'user_id', 'membership_date']
+        fields = ['id', 'user', 'user_id', 'membership_date', 'active_loans']
 
 class LoanSerializer(serializers.ModelSerializer):
     book = BookSerializer(read_only=True)
@@ -44,4 +45,4 @@ class LoanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Loan
-        fields = ['id', 'book', 'book_id', 'member', 'member_id', 'loan_date', 'return_date', 'is_returned']
+        fields = ['id', 'book', 'book_id', 'member', 'member_id', 'loan_date', 'return_date', 'due_date', 'is_returned']
