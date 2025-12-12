@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Author, Book, Member, Loan
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 class AuthorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -42,7 +43,25 @@ class LoanSerializer(serializers.ModelSerializer):
     member_id = serializers.PrimaryKeyRelatedField(
         queryset=Member.objects.all(), source='member', write_only=True
     )
+    is_overdue = serializers.SerializerMethodField()
 
     class Meta:
         model = Loan
-        fields = ['id', 'book', 'book_id', 'member', 'member_id', 'loan_date', 'return_date', 'due_date', 'is_returned']
+        fields = [
+            'id',
+            'book',
+            'book_id',
+            'member',
+            'member_id',
+            'loan_date',
+            'return_date',
+            'due_date',
+            'is_returned',
+            'is_overdue',
+        ]
+
+    def get_is_overdue(self, obj):
+        if obj.is_returned or obj.due_date is None:
+            return False
+        today = timezone.now().date()
+        return obj.due_date < today

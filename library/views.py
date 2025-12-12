@@ -47,9 +47,12 @@ class BookViewSet(viewsets.ModelViewSet):
     def return_book(self, request, pk=None):
         book = self.get_object()
         member_id = request.data.get('member_id')
-        try:
-            loan = Loan.objects.get(book=book, member__id=member_id, is_returned=False)
-        except Loan.DoesNotExist:
+        loan = (
+            Loan.objects.filter(book=book, member__id=member_id, is_returned=False)
+            .order_by("-loan_date")
+            .first()
+        )
+        if loan is None:
             return Response({'error': 'Active loan does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
         loan.is_returned = True
         loan.return_date = timezone.now().date()
@@ -80,8 +83,24 @@ class MemberViewSet(viewsets.ModelViewSet):
 
 
 class LoanViewSet(viewsets.ModelViewSet):
-    queryset = Loan.objects.all()
     serializer_class = LoanSerializer
+
+    queryset = Loan.objects.all()
+
+    def get_queryset(self):
+        qs = Loan.objects.select_related("book__author", "member__user")
+        status_filter = self.request.query_params.get("status")
+        today = timezone.now().date()
+        if status_filter == "returned":
+            qs = qs.filter(is_returned=True)
+        elif status_filter == "all":
+            qs = qs
+        else:
+            # default: active + overdue (not returned)
+            qs = qs.filter(is_returned=False)
+            if status_filter == "overdue":
+                qs = qs.filter(due_date__lt=today)
+        return qs.order_by("-loan_date", "-id")
 
     @action(detail=True, methods=['post'])
     def extend_due_date(self, request, pk=None):
